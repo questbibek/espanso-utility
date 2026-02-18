@@ -20,9 +20,15 @@ Type a shortcode anywhere on your computer and get instant grammar fixes, transl
 cd $env:USERPROFILE
 git clone https://github.com/questbibek/espanso-utility.git
 
+# Stop espanso if it is running
+espanso stop
+
 # Clone espanso config (base.yml) into Espanso's config folder
 cd "$env:APPDATA"
 git clone https://github.com/questbibek/espanso.git
+
+# Starts espanso
+espanso restart
 ```
 
 This creates:
