@@ -23,9 +23,6 @@ git clone https://github.com/questbibek/espanso-utility.git
 # Stop espanso if it is running
 espanso stop
 
-# Remove old espanso files
-Remove-Item -Recurse -Force "C:\Users\unrav\AppData\Roaming\espanso"
-
 # Clone espanso config (base.yml) into Espanso's config folder
 cd "$env:APPDATA"
 git clone https://github.com/questbibek/espanso.git
