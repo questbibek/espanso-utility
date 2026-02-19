@@ -32,8 +32,8 @@ espanso restart
 ```
 
 This creates:
-- `C:\Users\YOUR_USERNAME\espanso-utility\` — all scripts
-- `C:\Users\YOUR_USERNAME\AppData\Roaming\espanso\` — Espanso config with `match\base.yml`
+- `$env:USERPROFILE\espanso-utility\` — all scripts
+- `$env:APPDATA\espanso\` — Espanso config with `match\base.yml`
 
 ### Step 2: Setup API keys
 
@@ -70,14 +70,14 @@ Type `:wttt` anywhere — you should see `Welcome to the team ❤️`
 
 | Repo | Clone to | What's inside |
 |------|----------|---------------|
-| [espanso-utility](https://github.com/questbibek/espanso-utility) | `C:\Users\YOU\espanso-utility\` | All `.ps1` and `.bat` scripts, `.env.example`, `load-env.ps1` |
-| [espanso](https://github.com/questbibek/espanso) | `C:\Users\YOU\AppData\Roaming\espanso\` | Espanso `config\` and `match\base.yml` (trigger definitions) |
+| [espanso-utility](https://github.com/questbibek/espanso-utility) | `$env:USERPROFILE\espanso-utility\` | All `.ps1` and `.bat` scripts, `.env.example`, `load-env.ps1` |
+| [espanso](https://github.com/questbibek/espanso) | `$env:APPDATA\espanso\` | Espanso `config\` and `match\base.yml` (trigger definitions) |
 
 ---
 
 ## 🔑 API Keys
 
-Edit `%USERPROFILE%\espanso-utility\.env`:
+Edit `$env:USERPROFILE\espanso-utility\.env`:
 
 ```
 OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
@@ -99,7 +99,7 @@ CLOUDINARY_UPLOAD_PRESET=your_preset
 2. Create project → Enable **Google Calendar API**
 3. Credentials → Create **OAuth 2.0 Client ID** (Desktop app)
 4. Download JSON → rename to `google-credentials.json`
-5. Place in `%USERPROFILE%\espanso-utility\`
+5. Place in `$env:USERPROFILE\espanso-utility\`
 6. First time you use `:meeting`, browser opens to authorize
 
 See `google-credentials.example.json` for the expected format.
