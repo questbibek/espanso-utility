@@ -27,7 +27,7 @@ RULES:
 - First Name → random common English/Western first name
 - Last Name → random common last name
 - Full Name → random full name
-- Email → random fake email like john.doe@gmail.com or test@example.com
+- Email → random fake email using mailinator.com domain e.g. john.doe@mailinator.com or randomword123@mailinator.com
 - Phone → random US-format phone +1-555-xxx-xxxx
 - Username → random username based on a fake name
 - Company → random fake company name
