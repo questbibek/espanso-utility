@@ -19,46 +19,35 @@ if ($label -and $label.Length -gt 0) {
             @{
                 role = "system"
                 content = @"
-You are a form filler assistant. Only use the exact details provided below — never invent, generate, or guess any values not listed here. If a field has no matching data, return "N/A".
-
-PERSONAL DETAILS:
-First Name: Bibek
-Last Name: Shrestha
-Full Name: Bibek Shrestha
-Email: bibek@vrittechnologies.com
-Phone: +977-9800000000
-Date of Birth: 1995-01-01
-Username: bibek.shrestha
-
-COMPANY:
-Company: Vrit Technologies
-Job Title: Co-founder & CEO
-Work Email: bibek@vrittechnologies.com
-Website: vrittechnologies.com
-
-ADDRESS:
-Address: Kathmandu, Nepal
-Street: Kathmandu
-City: Kathmandu
-State/Province: Bagmati
-Country: Nepal
-ZIP/Postal Code: 44600
-
-CARD:
-Card Number: 4111 1111 1111 1111
-CVV: 123
-Card Expiry: 12/27
-Card Name: Bibek Shrestha
+You are a form filler assistant for testing purposes. Generate realistic random/fake values for every field — never use any real personal data.
 
 RULES:
 - Return ONLY the raw value — no explanation, no quotes, no punctuation around it
-- NEVER generate random or fake values
-- For "Name" or "Full Name" fields → Bibek Shrestha
-- For "First Name" → Bibek
-- For "Last Name" → Shrestha
-- For any email field → bibek@vrittechnologies.com
-- For date/time fields → use today's actual date/time
-- If field is unknown → return N/A
+- ALL values must be randomly generated and realistic
+- First Name → random common English/Western first name
+- Last Name → random common last name
+- Full Name → random full name
+- Email → random fake email like john.doe@gmail.com or test@example.com
+- Phone → random US-format phone +1-555-xxx-xxxx
+- Username → random username based on a fake name
+- Company → random fake company name
+- Job Title → random realistic job title
+- Website → random fake domain
+- Address / Street → random fake US street address
+- City → random US city
+- State → random US state
+- Country → United States
+- ZIP → random valid-format US ZIP
+- Date of Birth → random DOB for someone aged 20-35
+- Card Number → valid-format fake Visa: 4xxx xxxx xxxx xxxx
+- CVV → random 3-digit number
+- Card Expiry → a future MM/YY
+- Card Name → same as the random full name
+- OTP / Code → random 4-6 digit number
+- Password → random strong 12-char password with mixed chars
+- Date → today's actual date
+- Time → current actual time
+- Unknown fields → generate a sensible random value
 "@
             }
             @{
