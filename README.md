@@ -79,11 +79,16 @@ Type `:wttt` anywhere — you should see `Welcome to the team ❤️`
 
 Edit `$env:USERPROFILE\espanso-utility\.env`:
 
-```
+```dotenv
 OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
 OCR_SPACE_API_KEY=your_key_here
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_UPLOAD_PRESET=your_preset
+R2_ACCESS_KEY_ID=your_r2_access_key_id
+R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
+R2_ACCOUNT_ID=your_r2_account_id
+R2_BUCKET_NAME=your_bucket_name
+R2_PUBLIC_BASE_URL=https://pub-xxxxxxxxxxxxxxxxxxxxxxxx.r2.dev
 ```
 
 | Key | Required | What it powers | Get it |
@@ -92,6 +97,11 @@ CLOUDINARY_UPLOAD_PRESET=your_preset
 | `OCR_SPACE_API_KEY` | No | `:ocr` — extract text from screenshot | [ocr.space/ocrapi/freekey](https://ocr.space/ocrapi/freekey) (free) |
 | `CLOUDINARY_CLOUD_NAME` | No | `:fullss`, `:clipss` — screenshot upload | [cloudinary.com/console](https://cloudinary.com/console) |
 | `CLOUDINARY_UPLOAD_PRESET` | No | `:fullss`, `:clipss` — screenshot upload | Cloudinary → Settings → Upload Presets |
+| `R2_ACCESS_KEY_ID` | No | `:r2upload`, `:r2delete`, `:r2-N-clear` — file storage | Cloudflare Dashboard → R2 → Manage API Tokens |
+| `R2_SECRET_ACCESS_KEY` | No | R2 file operations | Cloudflare Dashboard → R2 → Manage API Tokens |
+| `R2_ACCOUNT_ID` | No | R2 file operations | Cloudflare Dashboard → R2 → Manage API Tokens |
+| `R2_BUCKET_NAME` | No | R2 file operations | Your R2 bucket name |
+| `R2_PUBLIC_BASE_URL` | No | Public links after upload | Cloudflare R2 → Bucket → Settings → Public Development URL |
 
 ### Google Calendar (Optional — for `:meeting` and `:schedule`)
 
@@ -125,6 +135,8 @@ echo $env:OPENAI_API_KEY
 echo $env:OCR_SPACE_API_KEY
 echo $env:CLOUDINARY_CLOUD_NAME
 echo $env:CLOUDINARY_UPLOAD_PRESET
+echo $env:R2_BUCKET_NAME
+echo $env:R2_ACCESS_KEY_ID
 ```
 
 ---
@@ -201,6 +213,20 @@ echo $env:CLOUDINARY_UPLOAD_PRESET
 | `:fullss` | Screenshot active monitor → upload to Cloudinary → paste URL |
 | `:clipss` | Clipboard image → upload to Cloudinary → paste URL |
 | `:ocr` | Extract text from clipboard screenshot (OCR) |
+
+### ☁️ Cloudflare R2 File Storage
+| Trigger | What it does |
+|---------|-------------|
+| `:r2upload` | Ctrl+C any file(s) anywhere → upload to R2 → paste public link(s) |
+| `:r2delete` | Ctrl+C any file(s) → delete matching object(s) from R2 bucket |
+| `:r2-clear-all` | Delete ALL objects in the bucket |
+| `:r2-{N}-clear` | Delete objects older than N days (e.g. `:r2-7-clear`, `:r2-30-clear`) |
+
+**Usage:**
+- Select one or multiple files in Explorer → `Ctrl+C` → type trigger
+- Works from any location — Downloads, Desktop, D drive, anywhere
+- Filenames are auto-sanitized (spaces and special characters replaced with hyphens)
+- Links are pasted inline and also copied to clipboard
 
 ### 📅 Meetings
 | Trigger | What it does |
