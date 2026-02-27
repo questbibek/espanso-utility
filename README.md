@@ -47,6 +47,8 @@ notepad "$env:USERPROFILE\espanso-utility\.env"
 
 ### Step 3: Load API keys into Windows environment
 
+> ⚠️ **Important:** Run this in **Windows PowerShell (PS5)**, not PowerShell 7. Then open a new terminal for changes to take effect.
+
 ```powershell
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\espanso-utility\load-env.ps1"
 ```
@@ -84,6 +86,8 @@ OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
 OCR_SPACE_API_KEY=your_key_here
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_UPLOAD_PRESET=your_preset
+CLOUDINARY_API_KEY=your_cloudinary_api_key
+CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 R2_ACCESS_KEY_ID=your_r2_access_key_id
 R2_SECRET_ACCESS_KEY=your_r2_secret_access_key
 R2_ACCOUNT_ID=your_r2_account_id
@@ -95,13 +99,20 @@ R2_PUBLIC_BASE_URL=https://pub-xxxxxxxxxxxxxxxxxxxxxxxx.r2.dev
 |-----|----------|---------------|--------|
 | `OPENAI_API_KEY` | **Yes** | Grammar, GPT, translate, reply, summarize, math, meaning, draft, sheets, content, caption, bug task, user story, schedule | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
 | `OCR_SPACE_API_KEY` | No | `:ocr` — extract text from screenshot | [ocr.space/ocrapi/freekey](https://ocr.space/ocrapi/freekey) (free) |
-| `CLOUDINARY_CLOUD_NAME` | No | `:fullss`, `:clipss` — screenshot upload | [cloudinary.com/console](https://cloudinary.com/console) |
-| `CLOUDINARY_UPLOAD_PRESET` | No | `:fullss`, `:clipss` — screenshot upload | Cloudinary → Settings → Upload Presets |
-| `R2_ACCESS_KEY_ID` | No | `:r2upload`, `:r2delete`, `:r2-N-clear` — file storage | Cloudflare Dashboard → R2 → Manage API Tokens |
-| `R2_SECRET_ACCESS_KEY` | No | R2 file operations | Cloudflare Dashboard → R2 → Manage API Tokens |
-| `R2_ACCOUNT_ID` | No | R2 file operations | Cloudflare Dashboard → R2 → Manage API Tokens |
-| `R2_BUCKET_NAME` | No | R2 file operations | Your R2 bucket name |
-| `R2_PUBLIC_BASE_URL` | No | Public links after upload | Cloudflare R2 → Bucket → Settings → Public Development URL |
+| `CLOUDINARY_CLOUD_NAME` | No | All Cloudinary triggers | [cloudinary.com/console](https://cloudinary.com/console) |
+| `CLOUDINARY_UPLOAD_PRESET` | No | `:fullss`, `:clipss`, `:cloudinaryupload` | Cloudinary → Settings → Upload Presets |
+| `CLOUDINARY_API_KEY` | No | `:cloudinarydelete`, `:cloudinary-N-clear` | Cloudinary → Settings → API Keys |
+| `CLOUDINARY_API_SECRET` | No | `:cloudinarydelete`, `:cloudinary-N-clear` | Cloudinary → Settings → API Keys |
+| `R2_ACCESS_KEY_ID` | No | All R2 triggers | Cloudflare Dashboard → R2 → Manage API Tokens |
+| `R2_SECRET_ACCESS_KEY` | No | All R2 triggers | Cloudflare Dashboard → R2 → Manage API Tokens |
+| `R2_ACCOUNT_ID` | No | All R2 triggers | Cloudflare Dashboard → R2 → Manage API Tokens |
+| `R2_BUCKET_NAME` | No | All R2 triggers | Your R2 bucket name |
+| `R2_PUBLIC_BASE_URL` | No | Public links after R2 upload | Cloudflare R2 → Bucket → Settings → Public Development URL |
+
+### Cloudinary Upload Preset Setup
+In Cloudinary → Settings → Upload Presets → edit your preset:
+- **Generated public ID** → select **"Use the filename of the uploaded file as the public ID"**
+- This ensures `:cloudinarydelete` can find files by name
 
 ### Google Calendar (Optional — for `:meeting` and `:schedule`)
 
@@ -122,19 +133,18 @@ See `google-credentials.example.json` for the expected format.
 # 1. Edit your .env
 notepad "$env:USERPROFILE\espanso-utility\.env"
 
-# 2. Reload into environment
+# 2. Reload into environment (run in Windows PowerShell / PS5)
 powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\espanso-utility\load-env.ps1"
 
-# 3. Restart Espanso
+# 3. Open a new terminal, then restart Espanso
 espanso restart
 ```
 
 Verify keys are loaded:
 ```powershell
 echo $env:OPENAI_API_KEY
-echo $env:OCR_SPACE_API_KEY
 echo $env:CLOUDINARY_CLOUD_NAME
-echo $env:CLOUDINARY_UPLOAD_PRESET
+echo $env:CLOUDINARY_API_KEY
 echo $env:R2_BUCKET_NAME
 echo $env:R2_ACCESS_KEY_ID
 ```
@@ -213,6 +223,21 @@ echo $env:R2_ACCESS_KEY_ID
 | `:fullss` | Screenshot active monitor → upload to Cloudinary → paste URL |
 | `:clipss` | Clipboard image → upload to Cloudinary → paste URL |
 | `:ocr` | Extract text from clipboard screenshot (OCR) |
+
+### 🖼️ Cloudinary File Storage
+| Trigger | What it does |
+|---------|-------------|
+| `:cloudinaryupload` | Ctrl+C any file(s) anywhere → upload to Cloudinary → paste link(s) |
+| `:cloudinarydelete` | Ctrl+C any file(s) → delete from Cloudinary by filename |
+| `:cloudinary-clear-all` | Delete ALL resources from Cloudinary |
+| `:cloudinary-{N}-clear` | Delete resources older than N days (e.g. `:cloudinary-7-clear`, `:cloudinary-30-clear`) |
+
+**Usage:**
+- Select one or multiple files in Explorer → `Ctrl+C` → type trigger
+- Supports images, videos, and raw files (pdf, zip, html, docx, csv, json, ps1, md, etc.)
+- Images/videos use filename without extension as public_id; raw files keep full filename
+- Links are pasted inline and also copied to clipboard
+- Requires `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET` for delete/clear operations
 
 ### ☁️ Cloudflare R2 File Storage
 | Trigger | What it does |

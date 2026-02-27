@@ -27,11 +27,12 @@ try {
         $fileName = [System.IO.Path]::GetFileName($filePath)
         $ext      = [System.IO.Path]::GetExtension($fileName).ToLower()
 
-        # Determine resource type
         $resourceType = switch ($ext) {
-            { $_ -in ".mp4", ".mov", ".avi", ".mkv", ".webm" } { "video" }
-            { $_ -in ".pdf", ".zip", ".txt", ".json", ".csv", ".docx", ".xlsx" } { "raw" }
-            default { "image" }
+            { $_ -in ".mp4", ".mov", ".avi", ".mkv", ".webm" }                          { "video" }
+            { $_ -in ".pdf", ".zip", ".txt", ".json", ".csv", ".docx", ".xlsx", ".html",
+                      ".htm", ".xml", ".pptx", ".doc", ".xls", ".ts", ".js", ".py",
+                      ".ps1", ".sh", ".sql", ".md", ".yaml", ".yml" }                    { "raw" }
+            default                                                                       { "image" }
         }
 
         $uploadUrl = "https://api.cloudinary.com/v1_1/$cloudName/$resourceType/upload"
@@ -42,7 +43,14 @@ try {
             $uploadUrl
 
         $result = $response | ConvertFrom-Json
-        $links += $result.secure_url
+
+        if ($result.secure_url) {
+            $links += $result.secure_url
+        } elseif ($result.error) {
+            $links += "Error ($fileName): $($result.error.message)"
+        } else {
+            $links += "Failed: $fileName"
+        }
     }
 
     $output = $links -join "`n"
