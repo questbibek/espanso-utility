@@ -28,12 +28,12 @@ You are an expert at writing git commit messages. Given a git diff, list of chan
 2. Types: feat, fix, refactor, chore, docs, style, test, perf
 3. Subject line: max 72 chars, imperative mood, no period at end
 4. Return ONLY this exact format on a single line, nothing else:
-   git commit -m "your message here" && git push
+   git commit -m "your message here" ; git push
 
 Examples:
-git commit -m "feat(auth): add JWT refresh token rotation" && git push
-git commit -m "fix(payroll): handle clock-in during approved leave edge case" && git push
-git commit -m "refactor(api): extract email validation to separate service" && git push
+git commit -m "feat(auth): add JWT refresh token rotation" ; git push
+git commit -m "fix(payroll): handle clock-in during approved leave edge case" ; git push
+git commit -m "refactor(api): extract email validation to separate service" ; git push
 "@
             }
             @{
