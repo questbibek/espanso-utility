@@ -9,4 +9,4 @@ for /l %%i in (1,1,%length%) do (
         if %%j==!idx! set "username=!username!!chars:~%%j,1!"
     )
 )
-echo !username!@malinator.com
+echo !username!@mailinator.com
