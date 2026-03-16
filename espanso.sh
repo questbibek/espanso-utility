@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Espanso Utility - Mac & Linux Installer
+# Run this once on a fresh machine:
+#   bash <(curl -fsSL https://raw.githubusercontent.com/questbibek/espanso-utility/unix/espanso.sh)
 # ==============================================================================
 set -e
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPTS_DIR="$REPO_DIR/scripts"
+UTILITY_REPO="https://github.com/questbibek/espanso-utility.git"
+CONFIG_REPO="https://github.com/questbibek/espanso.git"
+UTILITY_BRANCH="unix"
+CONFIG_BRANCH="unix"
+REPO_DIR="$HOME/espanso-utility"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -18,12 +23,12 @@ success() { echo -e "${GREEN}[OK]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
+# ── Detect OS & Display Server ─────────────────────────────────────────────────
 detect_os() {
   if [[ "$OSTYPE" == "darwin"* ]]; then
     OS="mac"
   elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     OS="linux"
-    # Detect distro
     if [ -f /etc/debian_version ]; then
       DISTRO="debian"
     elif [ -f /etc/fedora-release ]; then
@@ -33,7 +38,6 @@ detect_os() {
     else
       DISTRO="other"
     fi
-    # Detect display server
     SESSION="${XDG_SESSION_TYPE:-}"
     if [ -z "$SESSION" ]; then
       SESSION=$(loginctl show-session "$(loginctl | grep "$(whoami)" | awk '{print $1}')" -p Type --value 2>/dev/null || echo "x11")
@@ -43,20 +47,68 @@ detect_os() {
   fi
 }
 
-install_espanso_mac() {
-  info "Installing Espanso on macOS..."
-  if ! command -v brew &>/dev/null; then
-    info "Homebrew not found. Installing..."
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+# ── Clone Repos ────────────────────────────────────────────────────────────────
+clone_repos() {
+  # 1. espanso-utility → ~/espanso-utility
+  if [ -d "$REPO_DIR/.git" ]; then
+    info "espanso-utility already cloned, pulling latest..."
+    cd "$REPO_DIR"
+    git fetch origin
+    git checkout "$UTILITY_BRANCH"
+    git pull origin "$UTILITY_BRANCH"
+  else
+    info "Cloning espanso-utility ($UTILITY_BRANCH branch)..."
+    git clone -b "$UTILITY_BRANCH" "$UTILITY_REPO" "$REPO_DIR"
+    success "Cloned to $REPO_DIR"
   fi
-  brew install --cask espanso
 
-  # Set up auto-start via launchd (equivalent of Windows Task Scheduler)
-  info "Setting up Espanso auto-start on login (launchd)..."
-  PLIST_DIR="$HOME/Library/LaunchAgents"
-  PLIST_FILE="$PLIST_DIR/com.espanso.espanso.plist"
-  mkdir -p "$PLIST_DIR"
-  cat > "$PLIST_FILE" <<EOF
+  # 2. espanso config → correct config dir
+  if [[ "$OS" == "mac" ]]; then
+    CONFIG_DIR="$HOME/Library/Application Support/espanso"
+  else
+    CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/espanso"
+  fi
+
+  if [ -d "$CONFIG_DIR/.git" ]; then
+    info "Espanso config already cloned, pulling latest..."
+    cd "$CONFIG_DIR"
+    git fetch origin
+    git checkout "$CONFIG_BRANCH"
+    git pull origin "$CONFIG_BRANCH"
+  else
+    info "Cloning espanso config ($CONFIG_BRANCH branch)..."
+    # Stop espanso before touching config dir
+    espanso stop 2>/dev/null || true
+    # Remove existing config dir if it exists but isn't a git repo
+    if [ -d "$CONFIG_DIR" ]; then
+      warn "Backing up existing config to ${CONFIG_DIR}.bak"
+      mv "$CONFIG_DIR" "${CONFIG_DIR}.bak"
+    fi
+    git clone -b "$CONFIG_BRANCH" "$CONFIG_REPO" "$CONFIG_DIR"
+    success "Cloned espanso config to $CONFIG_DIR"
+  fi
+}
+
+# ── Install Espanso ────────────────────────────────────────────────────────────
+install_espanso() {
+  if command -v espanso &>/dev/null; then
+    info "Espanso already installed: $(espanso --version)"
+    return
+  fi
+
+  if [[ "$OS" == "mac" ]]; then
+    info "Installing Espanso on macOS..."
+    if ! command -v brew &>/dev/null; then
+      info "Installing Homebrew..."
+      /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
+    brew install --cask espanso
+
+    info "Setting up Espanso auto-start (launchd)..."
+    PLIST_DIR="$HOME/Library/LaunchAgents"
+    PLIST_FILE="$PLIST_DIR/com.espanso.espanso.plist"
+    mkdir -p "$PLIST_DIR"
+    cat > "$PLIST_FILE" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -79,144 +131,161 @@ install_espanso_mac() {
   <string>/tmp/espanso.err</string>
 </dict>
 </plist>
-EOF
-  launchctl load "$PLIST_FILE"
-  success "Espanso will now auto-start on every login (launchd)"
-  success "Espanso installed via Homebrew"
-}
+PLIST
+    launchctl load "$PLIST_FILE"
+    success "Espanso installed and auto-start configured"
 
-install_espanso_linux() {
-  info "Detected Linux distro: ${DISTRO}, display: ${SESSION}"
-
-  if [[ "$DISTRO" == "debian" ]]; then
-    if [[ "$SESSION" == "wayland" ]]; then
-      DEB_URL="https://github.com/espanso/espanso/releases/latest/download/espanso-debian-wayland-amd64.deb"
-    else
-      DEB_URL="https://github.com/espanso/espanso/releases/latest/download/espanso-debian-x11-amd64.deb"
-    fi
-    info "Downloading Espanso .deb package..."
-    wget -q -O /tmp/espanso.deb "$DEB_URL"
-    sudo apt install -y /tmp/espanso.deb
-    rm /tmp/espanso.deb
   else
-    # AppImage fallback for Fedora, Arch, and others (X11 only for now)
-    warn "Using AppImage install (works for X11; Wayland on non-Debian requires manual compile)"
-    mkdir -p ~/opt
-    wget -q -O ~/opt/Espanso.AppImage \
-      'https://github.com/espanso/espanso/releases/latest/download/Espanso-X11.AppImage'
-    chmod u+x ~/opt/Espanso.AppImage
-    sudo ~/opt/Espanso.AppImage env-path register
-  fi
+    info "Installing Espanso on Linux (distro: $DISTRO, display: $SESSION)..."
+    if [[ "$DISTRO" == "debian" ]]; then
+      if [[ "$SESSION" == "wayland" ]]; then
+        DEB_URL="https://github.com/espanso/espanso/releases/latest/download/espanso-debian-wayland-amd64.deb"
+      else
+        DEB_URL="https://github.com/espanso/espanso/releases/latest/download/espanso-debian-x11-amd64.deb"
+      fi
+      wget -q -O /tmp/espanso.deb "$DEB_URL"
+      sudo apt install -y /tmp/espanso.deb
+      rm /tmp/espanso.deb
+    else
+      warn "Using AppImage install..."
+      mkdir -p ~/opt
+      wget -q -O ~/opt/Espanso.AppImage \
+        'https://github.com/espanso/espanso/releases/latest/download/Espanso-X11.AppImage'
+      chmod u+x ~/opt/Espanso.AppImage
+      sudo ~/opt/Espanso.AppImage env-path register
+    fi
 
-  info "Registering Espanso as a systemd service..."
-  espanso service register
-  espanso start
-  success "Espanso installed and started"
+    info "Registering Espanso as systemd service..."
+    espanso service register
+    espanso start
+    success "Espanso installed and started"
+  fi
 }
 
-setup_config() {
-  info "Setting up Espanso config..."
+# ── Install Dependencies ───────────────────────────────────────────────────────
+install_deps() {
+  info "Installing dependencies..."
 
   if [[ "$OS" == "mac" ]]; then
-    CONFIG_DIR="$HOME/Library/Application Support/espanso"
+    local deps=(curl wget jq git)
+    for dep in "${deps[@]}"; do
+      if ! command -v "$dep" &>/dev/null; then
+        info "Installing $dep..."
+        brew install "$dep"
+      else
+        info "$dep already installed"
+      fi
+    done
+    success "Mac dependencies ready (osascript built-in, no xdotool needed)"
+
   else
-    CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/espanso"
+    local deps=(curl wget jq git)
+
+    if [[ "$SESSION" == "wayland" ]]; then
+      deps+=(wl-clipboard)
+    else
+      deps+=(xclip xdotool)
+    fi
+
+    deps+=(libnotify-bin)
+
+    local to_install=()
+    for dep in "${deps[@]}"; do
+      if ! command -v "$dep" &>/dev/null; then
+        to_install+=("$dep")
+      else
+        info "$dep already installed"
+      fi
+    done
+
+    if [ ${#to_install[@]} -gt 0 ]; then
+      info "Installing: ${to_install[*]}"
+      if [[ "$DISTRO" == "debian" ]]; then
+        sudo apt install -y "${to_install[@]}"
+      elif [[ "$DISTRO" == "fedora" ]]; then
+        sudo dnf install -y "${to_install[@]}"
+      elif [[ "$DISTRO" == "arch" ]]; then
+        sudo pacman -S --noconfirm "${to_install[@]}"
+      else
+        warn "Please manually install: ${to_install[*]}"
+      fi
+    fi
+    success "Linux dependencies ready"
   fi
-
-  mkdir -p "$CONFIG_DIR/match" "$CONFIG_DIR/config"
-
-  # Copy our match file
-  cp "$REPO_DIR/config/match/base.yml" "$CONFIG_DIR/match/base.yml"
-
-  # Copy default config if not already present
-  if [ ! -f "$CONFIG_DIR/config/default.yml" ]; then
-    cp "$REPO_DIR/config/config/default.yml" "$CONFIG_DIR/config/default.yml"
-  fi
-
-  success "Config copied to: $CONFIG_DIR"
 }
 
+# ── Setup .env ─────────────────────────────────────────────────────────────────
 setup_env() {
-  info "Setting up .env file..."
+  info "Setting up .env..."
   ENV_FILE="$REPO_DIR/.env"
-  EXAMPLE_FILE="$REPO_DIR/.env.example"
+  EXAMPLE_FILE="$REPO_DIR/env.example"
 
   if [ ! -f "$ENV_FILE" ]; then
     cp "$EXAMPLE_FILE" "$ENV_FILE"
-    warn "Created .env from .env.example — please fill in your API keys:"
-    warn "  nano $ENV_FILE"
+    warn ".env created — add your API keys: code $ENV_FILE"
   else
-    info ".env already exists, skipping."
+    info ".env already exists, skipping"
   fi
 }
 
-install_deps() {
-  info "Checking dependencies..."
-  local missing=()
-
-  command -v curl  &>/dev/null || missing+=("curl")
-  command -v wget  &>/dev/null || missing+=("wget")
-  command -v jq    &>/dev/null || missing+=("jq")
-  command -v xclip &>/dev/null && CLIPBOARD_CMD="xclip" || true
-  command -v xsel  &>/dev/null && CLIPBOARD_CMD="xsel"  || true
-  command -v wl-copy &>/dev/null && CLIPBOARD_CMD="wl-copy" || true
-
-  if [[ "$OS" == "linux" ]] && [ -z "${CLIPBOARD_CMD:-}" ]; then
-    if [[ "$SESSION" == "wayland" ]]; then
-      missing+=("wl-clipboard")
-    else
-      missing+=("xclip")
-    fi
-  fi
-
-  if [ ${#missing[@]} -gt 0 ]; then
-    info "Installing missing dependencies: ${missing[*]}"
-    if [[ "$OS" == "mac" ]]; then
-      brew install "${missing[@]}"
-    elif [[ "$DISTRO" == "debian" ]]; then
-      sudo apt install -y "${missing[@]}"
-    elif [[ "$DISTRO" == "fedora" ]]; then
-      sudo dnf install -y "${missing[@]}"
-    elif [[ "$DISTRO" == "arch" ]]; then
-      sudo pacman -S --noconfirm "${missing[@]}"
-    else
-      warn "Please manually install: ${missing[*]}"
-    fi
-  fi
-  success "Dependencies OK"
-}
-
-make_scripts_executable() {
+# ── Make Scripts Executable ────────────────────────────────────────────────────
+make_executable() {
   info "Making scripts executable..."
-  chmod +x "$SCRIPTS_DIR"/*.sh
-  success "Scripts are now executable"
+  chmod +x "$REPO_DIR"/*.sh
+  success "All scripts are executable"
 }
 
-print_next_steps() {
+# ── Load Env into Shell ────────────────────────────────────────────────────────
+setup_shell_env() {
+  info "Adding load-env.sh to shell rc files..."
+  LOAD_CMD="source $REPO_DIR/load-env.sh"
+
+  for rc_file in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    if [ -f "$rc_file" ]; then
+      if ! grep -q "espanso-utility/load-env.sh" "$rc_file"; then
+        echo "$LOAD_CMD" >> "$rc_file"
+        success "Added to $rc_file"
+      else
+        info "Already in $rc_file"
+      fi
+    fi
+  done
+}
+
+# ── Restart Espanso ────────────────────────────────────────────────────────────
+restart_espanso() {
+  info "Restarting Espanso..."
+  espanso restart 2>/dev/null || espanso start
+  success "Espanso restarted"
+}
+
+# ── Print Summary ──────────────────────────────────────────────────────────────
+print_summary() {
   echo ""
   echo -e "${GREEN}========================================${NC}"
   echo -e "${GREEN}  Espanso Utility installed!${NC}"
   echo -e "${GREEN}========================================${NC}"
   echo ""
-  echo "Next steps:"
-  echo "  1. Add your API keys:    nano $REPO_DIR/.env"
-  echo "  2. Reload environment:   source $REPO_DIR/load-env.sh"
-  echo "  3. Restart Espanso:      espanso restart"
-  echo "  4. Test it — type :wttt anywhere"
+  echo "  OS:       $OS ${DISTRO:-}"
+  echo "  Repo:     $REPO_DIR"
+  echo ""
+  echo "  Next steps:"
+  echo "  1. Add API keys:     code $REPO_DIR/.env"
+  echo "  2. Load env now:     source $REPO_DIR/load-env.sh"
+  echo "  3. Test:             type :wttt anywhere"
+  echo ""
+  echo "  One-line install for next machine:"
+  echo "  bash <(curl -fsSL https://raw.githubusercontent.com/questbibek/espanso-utility/unix/espanso.sh)"
   echo ""
 }
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# ── Main ───────────────────────────────────────────────────────────────────────
 detect_os
-
-if [[ "$OS" == "mac" ]]; then
-  install_espanso_mac
-else
-  install_espanso_linux
-fi
-
 install_deps
+install_espanso
+clone_repos
 setup_env
-setup_config
-make_scripts_executable
-print_next_steps
+make_executable
+setup_shell_env
+restart_espanso
+print_summary
