@@ -167,7 +167,7 @@ install_deps() {
   info "Installing dependencies..."
 
   if [[ "$OS" == "mac" ]]; then
-    local deps=(curl wget jq git)
+    local deps=(curl wget jq git pngpaste)
     for dep in "${deps[@]}"; do
       if ! command -v "$dep" &>/dev/null; then
         info "Installing $dep..."
@@ -179,12 +179,12 @@ install_deps() {
     success "Mac dependencies ready (osascript built-in, no xdotool needed)"
 
   else
-    local deps=(curl wget jq git)
+    local deps=(curl wget jq git pngpaste)
 
     if [[ "$SESSION" == "wayland" ]]; then
       deps+=(wl-clipboard)
     else
-      deps+=(xclip xdotool)
+      deps+=(xclip xdotool scrot)
     fi
 
     deps+=(libnotify-bin)
