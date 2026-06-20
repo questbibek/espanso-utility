@@ -173,6 +173,20 @@ $grm = Read-Host "      Enter a model slug, or press Enter to keep default (llam
 if(-not [string]::IsNullOrWhiteSpace($grm)){ $d['GROQ_MODEL'] = $grm.Trim() }
 elseif(-not $curGroqModel){ $d['GROQ_MODEL'] = "llama-3.3-70b-versatile" }
 
+# --- OpenAI (web-grounded :ask / :factcheck) ---
+Write-Host "`n  -- OpenAI (web search for :ask and :factcheck) --" -ForegroundColor Cyan
+$d['OPENAI_API_KEY'] = Read-Key -Name "OPENAI_API_KEY" -Secret `
+    -Desc "Powers :ask and :factcheck (live web search). Get it at https://platform.openai.com/api-keys" `
+    -Current $d['OPENAI_API_KEY']
+
+$curOpenAiModel = $d['OPENAI_SEARCH_MODEL']
+$dispOpenAiModel = if($curOpenAiModel){ $curOpenAiModel } else { "gpt-4o-mini-search-preview (default)" }
+Write-Host "`n    OPENAI_SEARCH_MODEL [current: $dispOpenAiModel]" -ForegroundColor White
+Write-Host "      Search-enabled model for :ask / :factcheck. See https://platform.openai.com/docs/models" -ForegroundColor DarkGray
+$om = Read-Host "      Enter a model slug, or press Enter to keep default (gpt-4o-mini-search-preview): "
+if(-not [string]::IsNullOrWhiteSpace($om)){ $d['OPENAI_SEARCH_MODEL'] = $om.Trim() }
+elseif(-not $curOpenAiModel){ $d['OPENAI_SEARCH_MODEL'] = "gpt-4o-mini-search-preview" }
+
 # --- Primary provider selection ---
 Write-Host "`n  -- Primary AI provider --" -ForegroundColor Cyan
 $curPrimary = $d['AI_PRIMARY']
@@ -269,6 +283,7 @@ $fallback = if($primary -eq "gemini"){ "groq" } else { "gemini" }
 Write-Host "  AI routing: $primary (primary)  ->  $fallback (fallback)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  Test it: open a NEW window and type  :gpt  or  :fixgrammar" -ForegroundColor Green
+Write-Host "  Live web search (needs OpenAI key): copy text, then  :ask  or  :factcheck" -ForegroundColor Green
 Write-Host "  Switch provider on the fly:  :switch-gemini  or  :switch-groq" -ForegroundColor Green
 Write-Host "  Add a skipped key later? Just run this script again - it keeps"
 Write-Host "  everything you already set and only asks about the rest."
