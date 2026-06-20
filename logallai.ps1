@@ -12,7 +12,7 @@ Start-Sleep -Milliseconds 300
 $originalText = [System.Windows.Forms.Clipboard]::GetText()
 
 if ($originalText -and $originalText.Length -gt 0) {
-    $originalText = $originalText -replace ":allgpt$", ""
+    $originalText = $originalText -replace ":logallai$", ""
     $originalText = $originalText.Trim()
 
     $messages = @(
@@ -22,6 +22,6 @@ if ($originalText -and $originalText.Length -gt 0) {
         }
         @{ role = "user"; content = $originalText }
     )
-    $reply = & "$PSScriptRoot\ai-call.ps1" -Messages $messages
+    $reply = & "$PSScriptRoot\ai-call.ps1" -Messages $messages -ShowProvider
     if ($reply) { Write-Output $reply }
 }

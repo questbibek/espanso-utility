@@ -33,16 +33,16 @@ Get-ChildItem "$TargetDir\*.ps1" | Where-Object { $_.Name -ne "remove-hardcoded-
     $original = $content
     $changes = @()
 
-    # ---- Pattern 1: OpenAI key as $apiKey = "sk-proj-..." ----
-    if ($content -match 'apiKey\s*=\s*"sk-proj-') {
-        $content = [regex]::Replace($content, '\$apiKey\s*=\s*"sk-proj-[^"]*"', '$apiKey = $env:OPENAI_API_KEY')
-        $changes += "OPENAI_API_KEY (apiKey)"
+    # ---- Pattern 1: Gemini key hardcoded ----
+    if ($content -match 'apiKey\s*=\s*"AQ\.') {
+        $content = [regex]::Replace($content, '\$apiKey\s*=\s*"AQ\.[^"]*"', '$apiKey = $env:GEMINI_API_KEY')
+        $changes += "GEMINI_API_KEY (apiKey)"
     }
 
-    # ---- Pattern 2: OpenAI key as $openaiApiKey = "sk-proj-..." ----
-    if ($content -match 'openaiApiKey\s*=\s*"sk-proj-') {
-        $content = [regex]::Replace($content, '\$openaiApiKey\s*=\s*"sk-proj-[^"]*"', '$openaiApiKey = $env:OPENAI_API_KEY')
-        $changes += "OPENAI_API_KEY (openaiApiKey)"
+    # ---- Pattern 2: Groq key hardcoded ----
+    if ($content -match 'apiKey\s*=\s*"gsk_') {
+        $content = [regex]::Replace($content, '\$apiKey\s*=\s*"gsk_[^"]*"', '$apiKey = $env:GROQ_API_KEY')
+        $changes += "GROQ_API_KEY (apiKey)"
     }
 
     # ---- Pattern 3: OCR.space key ($apiKey = "K8870...") ----

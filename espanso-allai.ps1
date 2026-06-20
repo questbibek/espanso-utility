@@ -12,7 +12,7 @@ Start-Sleep -Milliseconds 300
 $originalText = [System.Windows.Forms.Clipboard]::GetText()
 
 if ($originalText -and $originalText.Length -gt 0) {
-    $originalText = $originalText -replace ":allgpt$", ""
+    $originalText = $originalText -replace ":allai$", ""
     $originalText = $originalText.Trim()
 
     $messages = @(

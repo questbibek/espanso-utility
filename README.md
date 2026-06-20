@@ -11,7 +11,7 @@ Type a shortcode anywhere on your computer and get instant grammar fixes, transl
 ### Prerequisites
 - **Windows 10/11**
 - **[Espanso](https://espanso.org/install/)** installed
-- **[OpenAI API Key](https://platform.openai.com/api-keys)** (required)
+- **[OpenRouter API Key](https://openrouter.ai/keys)** (required)
 
 ### Step 1: Clone both repos
 
@@ -82,7 +82,10 @@ Type `:wttt` anywhere — you should see `Welcome to the team ❤️`
 Edit `$env:USERPROFILE\espanso-utility\.env`:
 
 ```dotenv
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
+# Get your API key at https://openrouter.ai/keys
+OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx
+# Browse models at https://openrouter.ai/models — change these if a model is deprecated.
+OPENROUTER_MODEL_FAST=openai/gpt-4o-mini
 OCR_SPACE_API_KEY=your_key_here
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_UPLOAD_PRESET=your_preset
@@ -97,7 +100,8 @@ R2_PUBLIC_BASE_URL=https://pub-xxxxxxxxxxxxxxxxxxxxxxxx.r2.dev
 
 | Key | Required | What it powers | Get it |
 |-----|----------|---------------|--------|
-| `OPENAI_API_KEY` | **Yes** | Grammar, GPT, translate, reply, summarize, math, meaning, draft, sheets, content, caption, bug task, user story, schedule | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| `OPENROUTER_API_KEY` | **Yes** | Grammar, GPT, translate, reply, summarize, math, meaning, draft, sheets, content, caption, bug task, user story, schedule | [openrouter.ai/keys](https://openrouter.ai/keys) |
+| `OPENROUTER_MODEL_FAST` | No | Model used by all AI triggers (default: `openai/gpt-4o-mini`) — change once here to swap all scripts without editing them | [openrouter.ai/models](https://openrouter.ai/models) |
 | `OCR_SPACE_API_KEY` | No | `:ocr` — extract text from screenshot | [ocr.space/ocrapi/freekey](https://ocr.space/ocrapi/freekey) (free) |
 | `CLOUDINARY_CLOUD_NAME` | No | All Cloudinary triggers | [cloudinary.com/console](https://cloudinary.com/console) |
 | `CLOUDINARY_UPLOAD_PRESET` | No | `:fullss`, `:clipss`, `:cloudinaryupload` | Cloudinary → Settings → Upload Presets |
@@ -142,7 +146,7 @@ espanso restart
 
 Verify keys are loaded:
 ```powershell
-echo $env:OPENAI_API_KEY
+echo $env:OPENROUTER_API_KEY
 echo $env:CLOUDINARY_CLOUD_NAME
 echo $env:CLOUDINARY_API_KEY
 echo $env:R2_BUCKET_NAME
@@ -290,7 +294,7 @@ espanso service unregister
 1. Fork the repo
 2. Add your trigger to `match\base.yml` in the [espanso](https://github.com/questbibek/espanso) repo
 3. Create the script in [espanso-utility](https://github.com/questbibek/espanso-utility)
-4. Use `$env:OPENAI_API_KEY` — never hardcode keys
+4. Use `$env:OPENROUTER_API_KEY` — never hardcode keys
 5. Submit a PR
 
 ---

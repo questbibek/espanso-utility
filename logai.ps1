@@ -3,18 +3,9 @@ $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName System.Windows.Forms
 
-Start-Sleep -Milliseconds 100
-[System.Windows.Forms.SendKeys]::SendWait("^a")
-Start-Sleep -Milliseconds 200
-[System.Windows.Forms.SendKeys]::SendWait("^c")
-Start-Sleep -Milliseconds 300
-
 $originalText = [System.Windows.Forms.Clipboard]::GetText()
 
 if ($originalText -and $originalText.Length -gt 0) {
-    $originalText = $originalText -replace ":allgpt$", ""
-    $originalText = $originalText.Trim()
-
     $messages = @(
         @{
             role    = "system"
@@ -22,6 +13,6 @@ if ($originalText -and $originalText.Length -gt 0) {
         }
         @{ role = "user"; content = $originalText }
     )
-    $reply = & "$PSScriptRoot\ai-call.ps1" -Messages $messages
+    $reply = & "$PSScriptRoot\ai-call.ps1" -Messages $messages -ShowProvider
     if ($reply) { Write-Output $reply }
 }
