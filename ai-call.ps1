@@ -11,7 +11,15 @@ param(
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+# All providers speak the OpenAI chat-completions wire format, so one
+# Invoke-Provider implementation handles every entry below. To add a new
+# provider later, just add another OpenAI-compatible entry here.
 $providers = @{
+    gpt = @{
+        Url   = "https://api.openai.com/v1/chat/completions"
+        Key   = $env:OPENAI_API_KEY
+        Model = if ($env:OPENAI_MODEL) { $env:OPENAI_MODEL } else { "gpt-4.1-mini" }
+    }
     gemini = @{
         Url   = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
         Key   = $env:GEMINI_API_KEY
@@ -24,8 +32,9 @@ $providers = @{
     }
 }
 
-$primaryName  = if ($env:AI_PRIMARY -and $providers.ContainsKey($env:AI_PRIMARY.ToLower())) { $env:AI_PRIMARY.ToLower() } else { "gemini" }
-$fallbackName = if ($primaryName -eq "gemini") { "groq" } else { "gemini" }
+# Primary provider defaults to gpt; the rest act as automatic fallbacks.
+$primaryName = if ($env:AI_PRIMARY -and $providers.ContainsKey($env:AI_PRIMARY.ToLower())) { $env:AI_PRIMARY.ToLower() } else { "gpt" }
+$providerChain = @($primaryName) + @($providers.Keys | Where-Object { $_ -ne $primaryName } | Sort-Object)
 
 function Invoke-Provider {
     param([string]$Name, [object[]]$Msgs, [double]$Temp, [int]$MaxTok)
@@ -52,27 +61,22 @@ function Invoke-Provider {
     return $content.Trim()
 }
 
-$primaryError = $null
-$result = $null
+$result   = $null
 $usedProvider = $null
+$errors   = @()
 
-try {
-    $result = Invoke-Provider -Name $primaryName -Msgs $Messages -Temp $Temperature -MaxTok $MaxTokens
-    $usedProvider = $primaryName
-} catch {
-    $primaryError = $_.Exception.Message
+foreach ($name in $providerChain) {
+    try {
+        $result = Invoke-Provider -Name $name -Msgs $Messages -Temp $Temperature -MaxTok $MaxTokens
+        $usedProvider = $name
+        break
+    } catch {
+        $errors += "$name`: $($_.Exception.Message)"
+    }
 }
 
 if ($usedProvider) {
     if ($ShowProvider) { Write-Output "$result`n[via $usedProvider]" } else { Write-Output $result }
-    return
-}
-
-try {
-    $result = Invoke-Provider -Name $fallbackName -Msgs $Messages -Temp $Temperature -MaxTok $MaxTokens
-    $usedProvider = $fallbackName
-    if ($ShowProvider) { Write-Output "$result`n[via $usedProvider]" } else { Write-Output $result }
-} catch {
-    $fallbackError = $_.Exception.Message
-    Write-Output "Error: both AI providers failed. Primary ($primaryName): $primaryError | Fallback ($fallbackName): $fallbackError"
+} else {
+    Write-Output "Error: all AI providers failed. $($errors -join ' | ')"
 }

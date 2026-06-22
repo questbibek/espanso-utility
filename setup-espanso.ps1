@@ -4,15 +4,25 @@
 #  keys, only asks about what's missing or what you choose to change.
 #  Secrets are masked on screen.
 #
-#  Providers: Gemini (primary) + Groq (fallback), or swap via AI_PRIMARY.
+#  Providers: GPT (primary) + Gemini/Groq (fallback), or swap via AI_PRIMARY.
 #
 #  RUN in PowerShell (from anywhere - Downloads, the repo, etc.):
 #    Unblock-File .\setup-espanso.ps1
 #    powershell -ExecutionPolicy Bypass -File .\setup-espanso.ps1
 #  (works the same in pwsh 7: pwsh -ExecutionPolicy Bypass -File .\setup-espanso.ps1)
+#
+#  ONE-SHOT (unattended) install - no questions, accepts all defaults,
+#  skips any API key that isn't already in .env (re-run later to add them):
+#    powershell -ExecutionPolicy Bypass -File .\setup-espanso.ps1 -Yes
 # =============================================================
 
+param(
+    [Alias('Unattended','NonInteractive','y')]
+    [switch]$Yes   # one-shot: accept all defaults, never prompt, skip missing keys
+)
+
 $ErrorActionPreference = "Continue"
+$AUTO = [bool]$Yes
 
 $UtilDir   = Join-Path $env:USERPROFILE "espanso-utility"
 $ConfigDir = Join-Path $env:APPDATA "espanso"
@@ -27,10 +37,20 @@ function Good($m){ Write-Host "  OK $m" -ForegroundColor Green }
 function Warn($m){ Write-Host "  ! $m" -ForegroundColor Yellow }
 
 function Confirm-Step([string]$Question,[bool]$Default=$true){
+    if($script:AUTO){
+        Write-Host "$Question -> $(if($Default){'yes'}else{'no'}) (auto)" -ForegroundColor DarkGray
+        return $Default
+    }
     $suffix = if($Default){"[Y/n]"}else{"[y/N]"}
     $a = Read-Host "$Question $suffix"
     if([string]::IsNullOrWhiteSpace($a)){ return $Default }
     return $a.Trim().ToLower().StartsWith('y')
+}
+
+# Free-text prompt that returns "" (use default / skip) in one-shot mode.
+function Read-Opt([string]$Prompt){
+    if($script:AUTO){ return "" }
+    return Read-Host $Prompt
 }
 
 # Mask a secret for display: show first 4 + last 4, dots in between
@@ -61,6 +81,10 @@ function Read-Key {
     Write-Host "    $Name $shown" -ForegroundColor White
     Write-Host "      $Desc" -ForegroundColor DarkGray
     if($Required -and -not $Current){ Write-Host "      (required for AI triggers)" -ForegroundColor Yellow }
+    if($script:AUTO){
+        Write-Host "      $(if($Current){'kept'}else{'skipped'}) (auto)" -ForegroundColor DarkGray
+        return $Current
+    }
     $hint = if($Current){ "      Enter new value, or press Enter to KEEP: " } else { "      Enter value, or press Enter to SKIP: " }
     $val = Read-Host $hint
     if([string]::IsNullOrWhiteSpace($val)){ return $Current }
@@ -85,7 +109,8 @@ function Find-Espanso {
 Title "Espanso Setup"
 Write-Host "Sets up Espanso + your trigger scripts. Skip any API key and re-run"
 Write-Host "later to add it. Existing keys are kept; secrets are masked on screen."
-Write-Host "AI providers: Gemini (primary) + Groq (fallback). Either alone is enough." -ForegroundColor DarkGray
+Write-Host "AI providers: GPT (primary) + Gemini/Groq (fallback). Any one alone is enough." -ForegroundColor DarkGray
+if($AUTO){ Write-Host "ONE-SHOT MODE: accepting all defaults, no prompts. Missing keys are skipped - re-run anytime to add them." -ForegroundColor Yellow }
 
 # 1. Prerequisites -------------------------------------------
 Title "1. Prerequisites"
@@ -156,7 +181,7 @@ $curGeminiModel = $d['GEMINI_MODEL']
 $dispGeminiModel = if($curGeminiModel){ $curGeminiModel } else { "gemini-2.0-flash (default)" }
 Write-Host "`n    GEMINI_MODEL [current: $dispGeminiModel]" -ForegroundColor White
 Write-Host "      Browse models at https://ai.google.dev/gemini-api/docs/models" -ForegroundColor DarkGray
-$gm = Read-Host "      Enter a model slug, or press Enter to keep default (gemini-2.0-flash): "
+$gm = Read-Opt "      Enter a model slug, or press Enter to keep default (gemini-2.0-flash): "
 if(-not [string]::IsNullOrWhiteSpace($gm)){ $d['GEMINI_MODEL'] = $gm.Trim() }
 elseif(-not $curGeminiModel){ $d['GEMINI_MODEL'] = "gemini-2.0-flash" }
 
@@ -169,34 +194,51 @@ $curGroqModel = $d['GROQ_MODEL']
 $dispGroqModel = if($curGroqModel){ $curGroqModel } else { "llama-3.3-70b-versatile (default)" }
 Write-Host "`n    GROQ_MODEL [current: $dispGroqModel]" -ForegroundColor White
 Write-Host "      Browse models at https://console.groq.com/docs/models" -ForegroundColor DarkGray
-$grm = Read-Host "      Enter a model slug, or press Enter to keep default (llama-3.3-70b-versatile): "
+$grm = Read-Opt "      Enter a model slug, or press Enter to keep default (llama-3.3-70b-versatile): "
 if(-not [string]::IsNullOrWhiteSpace($grm)){ $d['GROQ_MODEL'] = $grm.Trim() }
 elseif(-not $curGroqModel){ $d['GROQ_MODEL'] = "llama-3.3-70b-versatile" }
 
-# --- OpenAI (web-grounded :ask / :factcheck) ---
-Write-Host "`n  -- OpenAI (web search for :ask and :factcheck) --" -ForegroundColor Cyan
+# --- OpenAI (default provider + web-grounded :ask / :factcheck) ---
+Write-Host "`n  -- OpenAI (default AI provider; also powers :ask and :factcheck) --" -ForegroundColor Cyan
 $d['OPENAI_API_KEY'] = Read-Key -Name "OPENAI_API_KEY" -Secret `
-    -Desc "Powers :ask and :factcheck (live web search). Get it at https://platform.openai.com/api-keys" `
+    -Desc "Default provider for AI triggers, plus :ask / :factcheck. Get it at https://platform.openai.com/api-keys" `
     -Current $d['OPENAI_API_KEY']
 
-$curOpenAiModel = $d['OPENAI_SEARCH_MODEL']
-$dispOpenAiModel = if($curOpenAiModel){ $curOpenAiModel } else { "gpt-4o-mini-search-preview (default)" }
-Write-Host "`n    OPENAI_SEARCH_MODEL [current: $dispOpenAiModel]" -ForegroundColor White
-Write-Host "      Search-enabled model for :ask / :factcheck. See https://platform.openai.com/docs/models" -ForegroundColor DarkGray
-$om = Read-Host "      Enter a model slug, or press Enter to keep default (gpt-4o-mini-search-preview): "
+$curGptModel = $d['OPENAI_MODEL']
+$dispGptModel = if($curGptModel){ $curGptModel } else { "gpt-4.1-mini (default)" }
+Write-Host "`n    OPENAI_MODEL [current: $dispGptModel]" -ForegroundColor White
+Write-Host "      Chat model used for the AI intermediator. See https://platform.openai.com/docs/models" -ForegroundColor DarkGray
+$gptm = Read-Opt "      Enter a model slug, or press Enter to keep default (gpt-4.1-mini): "
+if(-not [string]::IsNullOrWhiteSpace($gptm)){ $d['OPENAI_MODEL'] = $gptm.Trim() }
+elseif(-not $curGptModel){ $d['OPENAI_MODEL'] = "gpt-4.1-mini" }
+
+$curSearchModel = $d['OPENAI_SEARCH_MODEL']
+$dispSearchModel = if($curSearchModel){ $curSearchModel } else { "gpt-4o-mini-search-preview (default)" }
+Write-Host "`n    OPENAI_SEARCH_MODEL [current: $dispSearchModel]" -ForegroundColor White
+Write-Host "      Search-enabled model for :ask (must be an OpenAI *-search-preview model)." -ForegroundColor DarkGray
+$om = Read-Opt "      Enter a model slug, or press Enter to keep default (gpt-4o-mini-search-preview): "
 if(-not [string]::IsNullOrWhiteSpace($om)){ $d['OPENAI_SEARCH_MODEL'] = $om.Trim() }
-elseif(-not $curOpenAiModel){ $d['OPENAI_SEARCH_MODEL'] = "gpt-4o-mini-search-preview" }
+elseif(-not $curSearchModel){ $d['OPENAI_SEARCH_MODEL'] = "gpt-4o-mini-search-preview" }
+
+$curFactModel = $d['OPENAI_FACTCHECK_MODEL']
+$dispFactModel = if($curFactModel){ $curFactModel } else { "gpt-5.1 (default)" }
+Write-Host "`n    OPENAI_FACTCHECK_MODEL [current: $dispFactModel]" -ForegroundColor White
+Write-Host "      Model used for :factcheck (web-grounded via the Responses API)." -ForegroundColor DarkGray
+$fm = Read-Opt "      Enter a model slug, or press Enter to keep default (gpt-5.1): "
+if(-not [string]::IsNullOrWhiteSpace($fm)){ $d['OPENAI_FACTCHECK_MODEL'] = $fm.Trim() }
+elseif(-not $curFactModel){ $d['OPENAI_FACTCHECK_MODEL'] = "gpt-5.1" }
 
 # --- Primary provider selection ---
 Write-Host "`n  -- Primary AI provider --" -ForegroundColor Cyan
 $curPrimary = $d['AI_PRIMARY']
-$dispPrimary = if($curPrimary){ $curPrimary } else { "gemini (default)" }
+$dispPrimary = if($curPrimary){ $curPrimary } else { "gpt (default)" }
 Write-Host "    AI_PRIMARY [current: $dispPrimary]" -ForegroundColor White
-Write-Host "      Which provider to call first; the other is automatic fallback." -ForegroundColor DarkGray
-$pv = Read-Host "      Enter 'gemini' or 'groq', or press Enter to keep default (gemini): "
+Write-Host "      Which provider to call first; the others are automatic fallbacks." -ForegroundColor DarkGray
+$pv = Read-Opt "      Enter 'gpt', 'gemini' or 'groq', or press Enter to keep default (gpt): "
 if($pv.Trim().ToLower() -eq 'groq'){ $d['AI_PRIMARY'] = "groq" }
 elseif($pv.Trim().ToLower() -eq 'gemini'){ $d['AI_PRIMARY'] = "gemini" }
-elseif(-not $curPrimary){ $d['AI_PRIMARY'] = "gemini" }
+elseif($pv.Trim().ToLower() -eq 'gpt'){ $d['AI_PRIMARY'] = "gpt" }
+elseif(-not $curPrimary){ $d['AI_PRIMARY'] = "gpt" }
 
 # Optional: OCR
 if(Confirm-Step "`n  Configure OCR (for :ocr)?" $false){
@@ -241,7 +283,13 @@ Good "Scripts unblocked"
 
 # 6. Silent auto-start (Task Scheduler, no UAC popup) --------
 Title "6. Auto-start on login (silent)"
-if(Confirm-Step "  Set Espanso to start silently every login?" $true){
+if($AUTO){
+    # One-shot mode: the elevated scheduled task needs a UAC prompt, which would
+    # block an unattended run. Register the espanso service instead (no elevation).
+    Info "One-shot mode: registering espanso service for auto-start (no UAC)."
+    if($ESPANSO){ & $ESPANSO service register 2>$null | Out-Null }
+    Good "Auto-start via espanso service"
+} elseif(Confirm-Step "  Set Espanso to start silently every login?" $true){
     $taskScript = @'
 $espansoPath = "$env:LOCALAPPDATA\Programs\Espanso\espansod.exe"
 if(-not (Test-Path $espansoPath)){ $espansoPath = "$env:ProgramFiles\Espanso\espansod.exe" }
@@ -278,13 +326,13 @@ Title "Done!"
 $set = ($d.Keys | Where-Object { $d[$_] }) -join ", "
 Write-Host "  Configured: $set"
 Write-Host ""
-$primary  = if($d['AI_PRIMARY']){ $d['AI_PRIMARY'] } else { "gemini" }
-$fallback = if($primary -eq "gemini"){ "groq" } else { "gemini" }
-Write-Host "  AI routing: $primary (primary)  ->  $fallback (fallback)" -ForegroundColor DarkGray
+$primary   = if($d['AI_PRIMARY']){ $d['AI_PRIMARY'] } else { "gpt" }
+$fallbacks = (@('gpt','gemini','groq') | Where-Object { $_ -ne $primary }) -join ", "
+Write-Host "  AI routing: $primary (primary)  ->  $fallbacks (fallback)" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "  Test it: open a NEW window and type  :gpt  or  :fixgrammar" -ForegroundColor Green
 Write-Host "  Live web search (needs OpenAI key): copy text, then  :ask  or  :factcheck" -ForegroundColor Green
-Write-Host "  Switch provider on the fly:  :switch-gemini  or  :switch-groq" -ForegroundColor Green
+Write-Host "  Switch provider on the fly:  :switch-gpt, :switch-gemini  or  :switch-groq" -ForegroundColor Green
 Write-Host "  Add a skipped key later? Just run this script again - it keeps"
 Write-Host "  everything you already set and only asks about the rest."
 Write-Host ""

@@ -17,6 +17,6 @@ if ($claim -and $claim.Length -gt 0) {
         }
         @{ role = "user"; content = "Fact-check this claim: $claim" }
     )
-    $reply = & "$PSScriptRoot\ai-search.ps1" -Messages $messages -MaxTokens 700
+    $reply = & "$PSScriptRoot\ai-responses.ps1" -Messages $messages -MaxTokens 700
     if ($reply) { Write-Output $reply }
 }
