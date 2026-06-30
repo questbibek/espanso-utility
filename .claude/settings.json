@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Dell/AppData/Roaming/espanso/match/**)",
+      "Read(//c/Users/Dell/AppData/Roaming/espanso/**)",
+      "Bash(git -C \"c:/users/dell/espanso-utility\" status --short)",
+      "Bash(git -C \"C:/Users/Dell/AppData/Roaming/espanso\" status --short)",
+      "Bash(git add *)",
+      "Bash(git commit -m '@ *)",
+      "Bash(git commit *)",
+      "Bash(git -C \"c:/users/dell/espanso-utility\" push origin main)",
+      "Bash(git -C \"C:/Users/Dell/AppData/Roaming/espanso\" push origin main)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Dell\\AppData\\Roaming\\espanso\\match"
+    ]
+  }
+}
