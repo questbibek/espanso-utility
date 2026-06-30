@@ -6,65 +6,47 @@ Type a shortcode anywhere on your computer and get instant grammar fixes, transl
 
 ---
 
-## 🚀 Quick Setup
+## 🚀 Quick Setup — one script does everything
 
 ### Prerequisites
 - **Windows 10/11**
-- **[Espanso](https://espanso.org/install/)** installed
-- **[OpenRouter API Key](https://openrouter.ai/keys)** (required)
+- That's it. The setup script installs **Git** and **Espanso** for you if they're missing.
 
-### Step 1: Clone both repos
+### Step 1: Run the one-line installer
 
-```powershell
-# Clone espanso-utility scripts into your user profile
-cd $env:USERPROFILE
-git clone https://github.com/questbibek/espanso-utility.git
-
-# Stop espanso if it is running
-espanso stop
-
-# Clone espanso config (base.yml) into Espanso's config folder
-cd "$env:APPDATA"
-git clone https://github.com/questbibek/espanso.git
-
-# Starts espanso
-espanso restart
-```
-
-This creates:
-- `$env:USERPROFILE\espanso-utility\` — all scripts
-- `$env:APPDATA\espanso\` — Espanso config with `match\base.yml`
-
-### Step 2: Setup API keys
+Open **PowerShell** and paste this single command — it downloads and runs the setup script for you (nothing to clone by hand):
 
 ```powershell
-# Copy the example env file
-Copy-Item "$env:USERPROFILE\espanso-utility\.env.example" "$env:USERPROFILE\espanso-utility\.env"
-
-# Open and add your API keys
-notepad "$env:USERPROFILE\espanso-utility\.env"
+irm https://raw.githubusercontent.com/questbibek/espanso-utility/main/setup-espanso.ps1 | iex
 ```
 
-### Step 3: Load API keys into Windows environment
-
-> ⚠️ **Important:** Run this in **Windows PowerShell (PS5)**, not PowerShell 7. Then open a new terminal for changes to take effect.
+**Unattended one-liner** (no prompts — accepts all defaults, skips any key not already set):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\espanso-utility\load-env.ps1"
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/questbibek/espanso-utility/main/setup-espanso.ps1))) -Yes
 ```
 
-### Step 4: Start Espanso
+> Prefer to download first and inspect it? Grab the file, then run it:
+> ```powershell
+> curl.exe -L -o setup-espanso.ps1 https://raw.githubusercontent.com/questbibek/espanso-utility/main/setup-espanso.ps1
+> Unblock-File .\setup-espanso.ps1; powershell -ExecutionPolicy Bypass -File .\setup-espanso.ps1
+> ```
 
-```powershell
-# Restart Espanso to pick up new config
-espanso restart
+**That single command does the whole flow, from any folder:**
+1. Installs **Git** + **Espanso** if they aren't already present
+2. Clones each repo to its correct place:
+   - `espanso-utility` (scripts) → `$env:USERPROFILE\espanso-utility\`
+   - `espanso` (config + triggers) → `$env:APPDATA\espanso\`
+   - If a folder already exists it's **updated** (`git pull`), not overwritten
+3. Walks you through API keys (skip any you don't have — re-run later to add them)
+4. Loads the keys into your Windows environment (no separate `load-env.ps1` step)
+5. Unblocks all scripts, sets Espanso to auto-start on login, and starts it
 
-# Auto-start Espanso on Windows boot
-espanso service register
-```
+> Re-running the installer anytime is **safe** — it keeps every key you already set and only asks about what's missing.
 
-### Step 5: Test it!
-Type `:wttt` anywhere — you should see `Welcome to the team ❤️`
+### Step 2: Test it!
+Open a **new** window and type `:wttt` anywhere — you should see `Welcome to the team ❤️`
+(or try `:gpt` / `:fixgrammar` once your AI key is set).
 
 ---
 
@@ -79,13 +61,22 @@ Type `:wttt` anywhere — you should see `Welcome to the team ❤️`
 
 ## 🔑 API Keys
 
-Edit `$env:USERPROFILE\espanso-utility\.env`:
+The setup script writes these for you. To edit by hand: `$env:USERPROFILE\espanso-utility\.env`
 
 ```dotenv
-# Get your API key at https://openrouter.ai/keys
-OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx
-# Browse models at https://openrouter.ai/models — change these if a model is deprecated.
-OPENROUTER_MODEL_FAST=openai/gpt-4o-mini
+# Gemini — https://aistudio.google.com/apikey
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.0-flash
+# Groq — https://console.groq.com/keys
+GROQ_API_KEY=your_groq_api_key
+GROQ_MODEL=llama-3.3-70b-versatile
+# Which provider to call first; the others auto-fallback. gpt | gemini | groq
+AI_PRIMARY=gpt
+# OpenAI — default provider, and powers web-grounded :ask / :factcheck
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_MODEL=gpt-4.1-mini
+OPENAI_SEARCH_MODEL=gpt-4o-mini-search-preview
+OPENAI_FACTCHECK_MODEL=gpt-5.1
 OCR_SPACE_API_KEY=your_key_here
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_UPLOAD_PRESET=your_preset
@@ -98,10 +89,14 @@ R2_BUCKET_NAME=your_bucket_name
 R2_PUBLIC_BASE_URL=https://pub-xxxxxxxxxxxxxxxxxxxxxxxx.r2.dev
 ```
 
+**AI providers:** the toolkit routes through one **primary** provider with the others as automatic fallbacks. Setting up **any one** of GPT / Gemini / Groq is enough to use the AI triggers; add more for redundancy. `:ask` and `:factcheck` (live web search) specifically need an **OpenAI** key.
+
 | Key | Required | What it powers | Get it |
 |-----|----------|---------------|--------|
-| `OPENROUTER_API_KEY` | **Yes** | Grammar, GPT, translate, reply, summarize, math, meaning, draft, sheets, content, caption, bug task, user story, schedule | [openrouter.ai/keys](https://openrouter.ai/keys) |
-| `OPENROUTER_MODEL_FAST` | No | Model used by all AI triggers (default: `openai/gpt-4o-mini`) — change once here to swap all scripts without editing them | [openrouter.ai/models](https://openrouter.ai/models) |
+| `OPENAI_API_KEY` | Recommended (default) | All AI triggers when `AI_PRIMARY=gpt`, plus web-grounded `:ask` / `:factcheck` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+| `GEMINI_API_KEY` | Alt provider | All AI triggers when selected/fallback | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+| `GROQ_API_KEY` | Alt provider | All AI triggers when selected/fallback | [console.groq.com/keys](https://console.groq.com/keys) |
+| `AI_PRIMARY` | No | Provider called first (`gpt` default); others auto-fallback. Switch live with `:switch-gpt` / `:switch-gemini` / `:switch-groq` | — |
 | `OCR_SPACE_API_KEY` | No | `:ocr` — extract text from screenshot | [ocr.space/ocrapi/freekey](https://ocr.space/ocrapi/freekey) (free) |
 | `CLOUDINARY_CLOUD_NAME` | No | All Cloudinary triggers | [cloudinary.com/console](https://cloudinary.com/console) |
 | `CLOUDINARY_UPLOAD_PRESET` | No | `:fullss`, `:clipss`, `:cloudinaryupload` | Cloudinary → Settings → Upload Presets |
@@ -133,6 +128,14 @@ See `google-credentials.example.json` for the expected format.
 
 ## 🔄 Updating API Keys
 
+The simplest way: just **re-run the installer** — it keeps everything you already set, lets you add or change any key, reloads them into Windows, and restarts Espanso:
+
+```powershell
+irm https://raw.githubusercontent.com/questbibek/espanso-utility/main/setup-espanso.ps1 | iex
+```
+
+Prefer to edit the file directly? Then reload manually:
+
 ```powershell
 # 1. Edit your .env
 notepad "$env:USERPROFILE\espanso-utility\.env"
@@ -146,11 +149,11 @@ espanso restart
 
 Verify keys are loaded:
 ```powershell
-echo $env:OPENROUTER_API_KEY
+echo $env:OPENAI_API_KEY
+echo $env:GEMINI_API_KEY
+echo $env:GROQ_API_KEY
 echo $env:CLOUDINARY_CLOUD_NAME
-echo $env:CLOUDINARY_API_KEY
 echo $env:R2_BUCKET_NAME
-echo $env:R2_ACCESS_KEY_ID
 ```
 
 ---
@@ -294,7 +297,7 @@ espanso service unregister
 1. Fork the repo
 2. Add your trigger to `match\base.yml` in the [espanso](https://github.com/questbibek/espanso) repo
 3. Create the script in [espanso-utility](https://github.com/questbibek/espanso-utility)
-4. Use `$env:OPENROUTER_API_KEY` — never hardcode keys
+4. Call AI through `ai-call.ps1` and read keys from `$env:` (e.g. `$env:OPENAI_API_KEY`) — never hardcode keys
 5. Submit a PR
 
 ---
